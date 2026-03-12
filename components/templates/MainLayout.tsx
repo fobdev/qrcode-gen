@@ -49,18 +49,36 @@ export function MainLayout({ children }: MainLayoutProps) {
     }}>
       {mounted && <ThemeToggle theme={theme} toggleTheme={toggleTheme} />}
 
-      {/* Background grid */}
+      {/* Background Layer 1: Base Grid */}
       <div style={{
         position: 'fixed',
-        inset: 0,
+        inset: '-100px', // Extra margin for movement
         backgroundImage: `
           linear-gradient(var(--border) 1px, transparent 1px),
           linear-gradient(90deg, var(--border) 1px, transparent 1px)
         `,
         backgroundSize: '48px 48px',
-        opacity: 0.3,
+        opacity: 0.35,
         pointerEvents: 'none',
         zIndex: 0,
+        animation: 'moveGrid 5s linear infinite',
+        willChange: 'background-position',
+      }} />
+
+      {/* Background Layer 2: Slow Parallax Overlay */}
+      <div style={{
+        position: 'fixed',
+        inset: '-200px',
+        backgroundImage: `
+          linear-gradient(var(--border) 1px, transparent 1px),
+          linear-gradient(90deg, var(--border) 1px, transparent 1px)
+        `,
+        backgroundSize: '96px 96px',
+        opacity: 0.2,
+        pointerEvents: 'none',
+        zIndex: 0,
+        animation: 'moveGridSlow 15s linear infinite',
+        willChange: 'background-position',
       }} />
 
       {/* Radial vignette */}
@@ -180,6 +198,15 @@ export function MainLayout({ children }: MainLayoutProps) {
           height: 100% !important;
         }
         input::placeholder { color: var(--text-dim); }
+        
+        @keyframes moveGrid {
+          from { background-position: 0 0; }
+          to { background-position: 48px 48px; }
+        }
+        @keyframes moveGridSlow {
+          from { background-position: 0 0; }
+          to { background-position: 96px 48px; }
+        }
         
         .animate-fade-in { animation: fadeIn 0.6s var(--ease-out-expo) both; }
         .animate-scale-in { animation: scaleIn 0.5s var(--ease-out-expo) both; }
