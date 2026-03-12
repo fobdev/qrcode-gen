@@ -16,9 +16,9 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(({ style, ...props
                 border: 'none',
                 outline: 'none',
                 color: 'var(--text)',
-                fontSize: '14px',
+                fontSize: '16px', // Prevents iOS zoom
                 fontFamily: "'DM Mono', monospace",
-                padding: '10px 0',
+                padding: '12px 0',
                 minWidth: 0,
                 ...style
             }}

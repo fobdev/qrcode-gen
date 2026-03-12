@@ -38,11 +38,12 @@ export function MainLayout({ children }: MainLayoutProps) {
       display: 'flex',
       flexDirection: 'column',
       alignItems: 'center',
-      justifyContent: 'center',
-      padding: '2rem 1rem',
+      justifyContent: 'flex-start', // Better for long content on mobile
+      padding: '12vh 1rem 8rem 1rem', // Generous top/bottom padding
       gap: '0',
       position: 'relative',
-      overflow: 'hidden',
+      overflowX: 'hidden',
+      overflowY: 'auto',
       background: 'var(--bg)',
       color: 'var(--text)',
       transition: 'background 0.4s var(--ease-out-expo), color 0.4s var(--ease-out-expo)',
@@ -105,23 +106,32 @@ export function MainLayout({ children }: MainLayoutProps) {
         {children}
       </div>
 
-      {/* Footer */}
-      <div style={{
-        position: 'fixed',
-        bottom: '1.5rem',
-        left: 0,
-        right: 0,
-        textAlign: 'center',
-        fontSize: '10px',
-        color: 'var(--text-dim)',
-        letterSpacing: '0.12em',
-        zIndex: 1,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: '8px',
-      }}>
-        <span>NO DEPS · NO TRACKING · OPEN SOURCE ·</span>
+      {/* Footer - Moved to bottom of content flow */}
+      <div
+        className="footer-container"
+        style={{
+          marginTop: 'auto',
+          padding: '4rem 0 2rem 0',
+          width: '100%',
+          textAlign: 'center',
+          fontSize: '10px',
+          color: 'var(--text-dim)',
+          letterSpacing: '0.12em',
+          zIndex: 1,
+          display: 'flex',
+          flexDirection: 'row',
+          flexWrap: 'wrap',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '4px 8px',
+        }}
+      >
+        <span style={{
+          whiteSpace: 'nowrap',
+          opacity: 0.8
+        }}>
+          NO DEPS · NO TRACKING · OPEN SOURCE ·
+        </span>
         <a
           href="https://github.com/fobdev/qrcode-gen"
           target="_blank"
@@ -134,6 +144,7 @@ export function MainLayout({ children }: MainLayoutProps) {
             transition: 'all 0.3s var(--ease-out-expo)',
             textDecoration: 'none',
             cursor: 'pointer',
+            whiteSpace: 'nowrap'
           }}
           onMouseEnter={e => {
             e.currentTarget.style.color = 'var(--text)'

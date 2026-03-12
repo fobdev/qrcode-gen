@@ -16,19 +16,19 @@ export function InputBar({ url, setUrl, onCopy, onClear, copied }: InputBarProps
     const inputRef = useRef<HTMLInputElement>(null)
 
     return (
-        <div style={{
-            width: '100%',
-            background: 'var(--surface)',
-            border: '1px solid var(--border)',
-            borderRadius: '12px',
-            padding: '4px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '4px',
-            transition: 'border-color 0.2s',
-        }}
-            onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--border-hover)')}
-            onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--border)')}
+        <div
+            className="input-bar-container"
+            style={{
+                width: '100%',
+                background: 'var(--surface)',
+                border: '1px solid var(--border)',
+                borderRadius: '12px',
+                padding: '4px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                transition: 'border-color 0.2s, box-shadow 0.2s',
+            }}
         >
             <span style={{
                 padding: '0 12px',
@@ -52,7 +52,6 @@ export function InputBar({ url, setUrl, onCopy, onClear, copied }: InputBarProps
                     e.preventDefault()
                 }}
                 placeholder="https://example.com"
-                autoFocus
                 spellCheck={false}
             />
 

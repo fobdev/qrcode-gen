@@ -55,6 +55,30 @@ body {
   font-family: "DM Mono", monospace;
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+  overscroll-behavior: none; /* Prevents pull-to-refresh on mobile if undesired, or just common bounce */
+}
+
+/* Mobile Fixes */
+button, 
+a, 
+.theme-toggle {
+  -webkit-tap-highlight-color: transparent;
+}
+
+@media (max-width: 640px) {
+  body {
+    font-size: 14px;
+  }
+}
+
+.input-bar-container:hover {
+  border-color: var(--border-hover) !important;
+}
+
+.input-bar-container:focus-within {
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 2px var(--shadow);
 }
 
 ::selection {
