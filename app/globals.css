@@ -50,13 +50,13 @@
 
 html,
 body {
-  background: var(--bg);
+  background: #0a0a0a; /* True black base for mobile overscroll */
   color: var(--text);
   font-family: "DM Mono", monospace;
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
   overflow-x: hidden;
-  overscroll-behavior: none; /* Prevents pull-to-refresh on mobile if undesired, or just common bounce */
+  overscroll-behavior: none;
 }
 
 /* Mobile Fixes */
