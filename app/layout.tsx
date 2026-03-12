@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'QR — Generator',
+  title: 'QR - Generator',
   description: 'Generate QR codes instantly. No dependencies, no tracking.',
 }
 
