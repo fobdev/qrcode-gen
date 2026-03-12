@@ -126,35 +126,54 @@ export function QRGenerator() {
             alignItems: 'center',
             transition: 'all 0.6s var(--ease-out-expo)',
         }}>
-            {/* Title */}
+            {/* Title Lockup */}
             <div
                 className="animate-fade-in"
                 style={{
-                    marginBottom: '2.5rem',
-                    textAlign: 'center',
+                    marginBottom: '3rem',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
                     animationDelay: '0ms'
                 }}
             >
                 <h1 style={{
                     fontFamily: "'Syne', sans-serif",
-                    fontSize: 'clamp(2rem, 6vw, 3.5rem)',
+                    fontSize: 'clamp(2.5rem, 8vw, 4.5rem)',
                     fontWeight: 800,
-                    letterSpacing: '-0.03em',
+                    letterSpacing: '-0.04em',
                     color: 'var(--text)',
-                    lineHeight: 1,
-                    marginBottom: '0.5rem',
+                    lineHeight: 0.8,
+                    margin: 0,
+                    display: 'flex',
+                    gap: '0.02em'
                 }}>
-                    QR
+                    <span>Q</span>
+                    <span>R</span>
                 </h1>
-                <p style={{
-                    fontSize: '11px',
-                    letterSpacing: '0.2em',
-                    color: 'var(--text-muted)',
+
+                <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    width: '100%',
+                    marginTop: '1.2rem',
+                    fontSize: '10px',
+                    fontFamily: "'DM Mono', monospace",
                     textTransform: 'uppercase',
-                    fontWeight: 400,
+                    color: 'var(--text-muted)',
+                    letterSpacing: '0.1em',
                 }}>
-                    URL → code
-                </p>
+                    <div style={{ flex: 1, textAlign: 'right' }}>URL</div>
+                    <div style={{
+                        padding: '0 1rem',
+                        color: 'var(--text-dim)',
+                        opacity: 0.8,
+                        fontSize: '12px'
+                    }}>
+                        →
+                    </div>
+                    <div style={{ flex: 1, textAlign: 'left' }}>code</div>
+                </div>
             </div>
 
             <div className="animate-fade-in" style={{ width: '100%', animationDelay: '50ms' }}>
