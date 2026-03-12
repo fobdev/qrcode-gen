@@ -105,7 +105,7 @@ export function MainLayout({ children }: MainLayoutProps) {
       }}>
         <span>NO DEPS · NO TRACKING · OPEN SOURCE ·</span>
         <a
-          href="https://github.com/fobdev"
+          href="https://github.com/fobdev/qrcode-gen"
           target="_blank"
           rel="noopener noreferrer"
           style={{
