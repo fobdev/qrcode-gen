@@ -1,0 +1,75 @@
+@import url("https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Syne:wght@400;500;600;700;800&display=swap");
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Light Theme (Default) */
+  --bg: #ffffff;
+  --surface: #f7f7f7;
+  --surface-2: #eeeeee;
+  --border: #e8e8e8;
+  --border-hover: #dadada;
+  --text: #111111;
+  --text-muted: #555555; /* Higher contrast */
+  --text-dim: #949494;   /* Higher contrast */
+  --accent: #111111;
+  --accent-contrast: #ffffff;
+  --accent-warm: #333333;
+  --green: #16a34a;
+  --green-dim: #dcfce7;
+  --qr-bg: #ffffff;
+  --qr-dot: #000000;
+  --shadow: rgba(0,0,0,0.06);
+}
+
+[data-theme="dark"] {
+  --bg: #0a0a0a;
+  --surface: #111111;
+  --surface-2: #1a1a1a;
+  --border: #2a2a2a;
+  --border-hover: #3a3a3a;
+  --text: #f0ede8;
+  --text-muted: #94918e; /* Higher contrast */
+  --text-dim: #5c5a58;   /* Higher contrast */
+  --accent: #e8e0d0;
+  --accent-contrast: #0a0a0a;
+  --accent-warm: #c9b99a;
+  --green: #4ade80;
+  --green-dim: #166534;
+  --qr-bg: #ffffff;
+  --qr-dot: #000000;
+  --shadow: rgba(0,0,0,0.4);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: "DM Mono", monospace;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: var(--accent-warm);
+  color: #0a0a0a;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 2px;
+}
