@@ -33,7 +33,8 @@ export function QRContainer({ isGenerating, svgString, qrSide }: QRContainerProp
                 width: `${qrSide}px`,
                 height: `${qrSide}px`,
                 maxWidth: 'calc(100vw - 80px)',
-                maxHeight: 'calc(100vw - 80px)',
+                maxHeight: 'min(calc(100vw - 80px), 60vh)',
+                aspectRatio: '1 / 1',
                 position: 'relative'
             }}>
                 {isGenerating ? (

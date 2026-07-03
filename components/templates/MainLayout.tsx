@@ -42,8 +42,6 @@ export function MainLayout({ children }: MainLayoutProps) {
       padding: '12vh 1rem 8rem 1rem', // Generous top/bottom padding
       gap: '0',
       position: 'relative',
-      overflowX: 'hidden',
-      overflowY: 'auto',
       background: 'var(--bg)',
       color: 'var(--text)',
       transition: 'background 0.4s var(--ease-out-expo), color 0.4s var(--ease-out-expo)',

@@ -1,19 +1,36 @@
 'use client'
 
 import React, { useState, useEffect, useRef, useCallback } from 'react'
-import { generateQR, qrToSVG, chooseVersion } from '@/lib/qr'
+import { generateQR, qrToSVG, chooseVersion, maxLogoRatio, maxUrlBytes } from '@/lib/qr'
 import { InputBar } from '../molecules/InputBar'
 import { QRContainer } from '../molecules/QRContainer'
 import { DownloadGroup } from '../molecules/DownloadGroup'
+import { LogoControl } from '../molecules/LogoControl'
+
+const DEFAULT_SCHEME = 'https://'
 
 export function QRGenerator() {
-    const [url, setUrl] = useState('')
+    const [url, setUrl] = useState(DEFAULT_SCHEME)
     const [svgString, setSvgString] = useState<string | null>(null)
     const [error, setError] = useState<string | null>(null)
     const [version, setVersion] = useState<number | null>(null)
     const [copied, setCopied] = useState(false)
     const [isGenerating, setIsGenerating] = useState(false)
+    const [logoOriginal, setLogoOriginal] = useState<string | null>(null)
+    const [logoGray, setLogoGray] = useState<string | null>(null)
+    const [logoGrayscale, setLogoGrayscale] = useState(true)
+    const [logoSizeRatio, setLogoSizeRatio] = useState(0.75) // fraction of the safe max, not of the QR itself
+    const [logoTooLongForUrl, setLogoTooLongForUrl] = useState(false)
+    const logoSrc = logoGrayscale ? logoGray : logoOriginal
     const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+    // "Pristine" covers both a truly empty field and the auto-filled https://
+    // scheme the user hasn't typed past yet — both should behave like "nothing
+    // entered" for hints, error suppression, and generation triggering.
+    function isPristine(value: string): boolean {
+        const trimmed = value.trim()
+        return !trimmed || trimmed === DEFAULT_SCHEME
+    }
 
     function isValidUrl(str: string): boolean {
         if (!str.trim()) return false
@@ -25,12 +42,13 @@ export function QRGenerator() {
         }
     }
 
-    const generate = useCallback((value: string) => {
+    const generate = useCallback((value: string, logo: string | null, sizeRatio: number) => {
         const trimmed = value.trim()
-        if (!trimmed) {
+        if (isPristine(trimmed)) {
             setSvgString(null)
             setError(null)
             setVersion(null)
+            setLogoTooLongForUrl(false)
             return
         }
 
@@ -38,15 +56,23 @@ export function QRGenerator() {
             setSvgString(null)
             setError('Enter a valid URL starting with http:// or https://')
             setVersion(null)
+            setLogoTooLongForUrl(false)
             return
         }
 
         setIsGenerating(true)
         setError(null)
 
+        const urlBytes = new TextEncoder().encode(trimmed)
+        // A logo forces EC level H (much lower capacity than M). If the URL doesn't
+        // fit at H, fall back to M so the plain QR still generates instead of erroring.
+        const fitsAtH = urlBytes.length <= maxUrlBytes('H')
+        const applyLogo = !!logo && fitsAtH
+        const level = applyLogo ? 'H' : 'M'
+        setLogoTooLongForUrl(!!logo && !fitsAtH)
+
         try {
-            const urlBytes = new TextEncoder().encode(trimmed)
-            const v = chooseVersion(urlBytes.length)
+            const v = chooseVersion(urlBytes.length, level)
             setVersion(v)
         } catch (e: unknown) {
             // Version calculation error
@@ -54,8 +80,11 @@ export function QRGenerator() {
 
         setTimeout(() => {
             try {
-                const qr = generateQR(trimmed)
-                const svg = qrToSVG(qr, 12, 4)
+                const qr = generateQR(trimmed, level)
+                const logoOpts = applyLogo && logo
+                    ? { src: logo, ratio: maxLogoRatio(qr.version) * sizeRatio }
+                    : undefined
+                const svg = qrToSVG(qr, 12, 4, logoOpts)
                 setSvgString(svg)
                 setVersion(qr.version)
                 setError(null)
@@ -71,9 +100,9 @@ export function QRGenerator() {
 
     useEffect(() => {
         if (debounceRef.current) clearTimeout(debounceRef.current)
-        debounceRef.current = setTimeout(() => generate(url), 300)
+        debounceRef.current = setTimeout(() => generate(url, logoSrc, logoSizeRatio), 300)
         return () => { if (debounceRef.current) clearTimeout(debounceRef.current) }
-    }, [url, generate])
+    }, [url, logoSrc, logoSizeRatio, generate])
 
     function downloadSVG() {
         if (!svgString) return
@@ -108,7 +137,7 @@ export function QRGenerator() {
     }
 
     async function copyUrl() {
-        if (!url.trim()) return
+        if (isPristine(url)) return
         await navigator.clipboard.writeText(url.trim())
         setCopied(true)
         setTimeout(() => setCopied(false), 2000)
@@ -117,6 +146,7 @@ export function QRGenerator() {
     const hasQR = !!svgString && !isGenerating
     const urlLen = new TextEncoder().encode(url.trim()).length
     const qrSide = version ? (version * 4 + 25) * 12 : 348
+    const showHint = isPristine(url)
 
     return (
         <div style={{
@@ -181,7 +211,7 @@ export function QRGenerator() {
                     url={url}
                     setUrl={setUrl}
                     onCopy={copyUrl}
-                    onClear={() => setUrl('')}
+                    onClear={() => setUrl(DEFAULT_SCHEME)}
                     copied={copied}
                 />
             </div>
@@ -212,7 +242,7 @@ export function QRGenerator() {
                 width: '100%',
                 opacity: (svgString || isGenerating) ? 1 : 0,
                 transform: (svgString || isGenerating) ? 'translateY(0)' : 'translateY(24px)',
-                maxHeight: (svgString || isGenerating) ? '800px' : '0px',
+                maxHeight: (svgString || isGenerating) ? '5000px' : '0px',
                 marginTop: (svgString || isGenerating) ? '2rem' : '0px',
                 pointerEvents: (svgString || isGenerating) ? 'auto' : 'none',
                 overflow: 'hidden',
@@ -239,13 +269,24 @@ export function QRGenerator() {
                         <span style={{ opacity: 0.5, animation: 'blink 1.5s infinite' }}>CALCULATING ATTRIBUTES…</span>
                     ) : (
                         <div className="animate-fade-in" key={version}>
-                            <span>V{version} · EC/M · {urlLen}B</span>
+                            <span>V{version} · EC/{logoSrc && !logoTooLongForUrl ? 'H' : 'M'} · {urlLen}B</span>
                             <span style={{ color: 'var(--text-dim)', marginLeft: '24px' }}>
                                 {((version! * 4 + 17))} × {((version! * 4 + 17))} modules
                             </span>
                         </div>
                     )}
                 </div>
+
+                <LogoControl
+                    logoSrc={logoSrc}
+                    onLogoChange={() => { setLogoOriginal(null); setLogoGray(null) }}
+                    onLogoUpload={(original, gray) => { setLogoOriginal(original); setLogoGray(gray) }}
+                    sizeRatio={logoSizeRatio}
+                    onSizeRatioChange={setLogoSizeRatio}
+                    tooLongForLogo={logoTooLongForUrl}
+                    grayscale={logoGrayscale}
+                    onGrayscaleChange={setLogoGrayscale}
+                />
 
                 <DownloadGroup
                     isGenerating={isGenerating}
@@ -256,12 +297,12 @@ export function QRGenerator() {
 
             {/* Hint text with smooth transition */}
             <div style={{
-                marginTop: !url ? '1.5rem' : '0px',
-                opacity: !url ? 1 : 0,
-                transform: !url ? 'translateY(0)' : 'translateY(12px)',
-                maxHeight: !url ? '100px' : '0px',
+                marginTop: showHint ? '1.5rem' : '0px',
+                opacity: showHint ? 1 : 0,
+                transform: showHint ? 'translateY(0)' : 'translateY(12px)',
+                maxHeight: showHint ? '100px' : '0px',
                 transition: 'all 0.6s var(--ease-out-expo)',
-                pointerEvents: !url ? 'auto' : 'none',
+                pointerEvents: showHint ? 'auto' : 'none',
                 overflow: 'hidden',
             }}>
                 <p style={{

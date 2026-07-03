@@ -50,6 +50,24 @@ export function MoonIcon({ style }: IconProps) {
     )
 }
 
+export function ImageIcon({ style }: IconProps) {
+    return (
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg" style={style}>
+            <rect x="1.5" y="2.5" width="11" height="9" rx="1.5" stroke="currentColor" strokeWidth="1.2" />
+            <circle cx="5" cy="5.5" r="1" fill="currentColor" />
+            <path d="M2 10l3.2-3.2a1 1 0 011.4 0L9 9.2M8.5 8.5l1-1a1 1 0 011.4 0L12 8.6" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+    )
+}
+
+export function TrashIcon({ style }: IconProps) {
+    return (
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg" style={style}>
+            <path d="M2.5 4h9M5.5 4V2.5h3V4M5 6.5v3.5M9 6.5v3.5M3.5 4l.5 7a1 1 0 001 1h4a1 1 0 001-1l.5-7" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+    )
+}
+
 export function GithubIcon({ style }: IconProps) {
     return (
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={style}>

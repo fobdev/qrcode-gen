@@ -50,8 +50,18 @@ function rsEncode(data: number[], nEc: number): number[] {
 // ── Version / EC tables (Nayuki verified) ────────────────────────────────────
 // Index 0 unused; index = version number
 
+export type ECLevel = 'M' | 'H'
+
 const ECC_PER_BLOCK_M = [-1, 10, 16, 26, 18, 24, 16, 18, 22, 22, 26]
 const NUM_BLOCKS_M    = [-1,  1,  1,  1,  2,  2,  4,  4,  4,  5,  5]
+
+const ECC_PER_BLOCK_H = [-1, 17, 28, 22, 16, 22, 28, 26, 26, 24, 28]
+const NUM_BLOCKS_H    = [-1,  1,  1,  2,  4,  4,  4,  5,  6,  8,  8]
+
+const FORMAT_BITS: Record<ECLevel, number> = { M: 0, H: 2 }
+
+function eccPerBlock(level: ECLevel): number[] { return level === 'H' ? ECC_PER_BLOCK_H : ECC_PER_BLOCK_M }
+function numBlocks(level: ECLevel): number[] { return level === 'H' ? NUM_BLOCKS_H : NUM_BLOCKS_M }
 
 // Alignment pattern centers per version (empty = no alignment)
 const ALIGN_CENTERS: Record<number, number[]> = {
@@ -62,11 +72,11 @@ const ALIGN_CENTERS: Record<number, number[]> = {
 // Remainder bits per version
 const REMAINDER_BITS = [-1, 0, 7, 7, 7, 7, 7, 0, 0, 0, 0]
 
-// Data codeword capacity per version at M level
-function getNumDataCw(ver: number): number {
+// Data codeword capacity per version at the given EC level
+function getNumDataCw(ver: number, level: ECLevel): number {
   const rawBits = getRawModules(ver)
   const total = Math.floor(rawBits / 8)
-  return total - ECC_PER_BLOCK_M[ver] * NUM_BLOCKS_M[ver]
+  return total - eccPerBlock(level)[ver] * numBlocks(level)[ver]
 }
 
 function getRawModules(ver: number): number {
@@ -79,31 +89,42 @@ function getRawModules(ver: number): number {
   return result
 }
 
-// Byte mode capacity at M level
-function byteCapacity(ver: number): number {
-  const dc = getNumDataCw(ver)
-  return Math.floor((dc * 8 - 4 - 8) / 8)
+// Byte-mode character-count indicator width (bits).
+// Per ISO/IEC 18004: 8 bits for versions 1–9, 16 bits for versions 10–26.
+function charCountBits(ver: number): number {
+  return ver >= 10 ? 16 : 8
 }
 
-export function chooseVersion(urlLen: number): number {
+// Byte mode capacity at the given EC level
+function byteCapacity(ver: number, level: ECLevel): number {
+  const dc = getNumDataCw(ver, level)
+  return Math.floor((dc * 8 - 4 - charCountBits(ver)) / 8)
+}
+
+export function maxUrlBytes(level: ECLevel = 'M'): number {
+  return byteCapacity(10, level)
+}
+
+export function chooseVersion(urlLen: number, level: ECLevel = 'M'): number {
   for (let v = 1; v <= 10; v++) {
-    if (urlLen <= byteCapacity(v)) return v
+    if (urlLen <= byteCapacity(v, level)) return v
   }
-  throw new Error(`URL too long (max ${byteCapacity(10)} bytes for version 10-M)`)
+  throw new Error(`URL too long (max ${byteCapacity(10, level)} bytes for version 10-${level})`)
 }
 
 // ── Encoding ──────────────────────────────────────────────────────────────────
-function encodeData(url: string, ver: number): number[] {
+function encodeData(url: string, ver: number, level: ECLevel): number[] {
   const raw = Array.from(new TextEncoder().encode(url))
   const n = raw.length
-  const numDc = getNumDataCw(ver)
+  const numDc = getNumDataCw(ver, level)
   const cap = numDc * 8
 
   const bits: number[] = []
   // Mode: byte = 0b0100
   bits.push(0, 1, 0, 0)
-  // Char count: 8 bits for versions 1–9
-  for (let i = 7; i >= 0; i--) bits.push((n >> i) & 1)
+  // Char count: 8 bits for versions 1–9, 16 bits for versions 10+
+  const ccBits = charCountBits(ver)
+  for (let i = ccBits - 1; i >= 0; i--) bits.push((n >> i) & 1)
   // Data bytes
   for (const b of raw)
     for (let i = 7; i >= 0; i--) bits.push((b >> i) & 1)
@@ -125,18 +146,18 @@ function encodeData(url: string, ver: number): number[] {
   return cw
 }
 
-function interleave(dataCw: number[], ver: number): number[] {
-  const numBlocks = NUM_BLOCKS_M[ver]
-  const ecPerBlock = ECC_PER_BLOCK_M[ver]
-  const numDc = getNumDataCw(ver)
-  const dcPerBlock = Math.floor(numDc / numBlocks)
-  const extraBlocks = numDc % numBlocks // blocks with dcPerBlock+1 data codewords
+function interleave(dataCw: number[], ver: number, level: ECLevel): number[] {
+  const nb = numBlocks(level)[ver]
+  const ecPerBlock = eccPerBlock(level)[ver]
+  const numDc = getNumDataCw(ver, level)
+  const dcPerBlock = Math.floor(numDc / nb)
+  const extraBlocks = numDc % nb // blocks with dcPerBlock+1 data codewords
 
   // Split into blocks (handle unequal sizes)
   const blocksData: number[][] = []
   let offset = 0
-  for (let b = 0; b < numBlocks; b++) {
-    const size = dcPerBlock + (b >= numBlocks - extraBlocks ? 1 : 0)
+  for (let b = 0; b < nb; b++) {
+    const size = dcPerBlock + (b >= nb - extraBlocks ? 1 : 0)
     blocksData.push(dataCw.slice(offset, offset + size))
     offset += size
   }
@@ -214,6 +235,16 @@ function buildMatrix(ver: number): { matrix: (boolean | null)[][]; fn: boolean[]
   for (let i = size - 8; i < size; i++) {
     if (!fn[i][8]) setM(i, 8, false)
     if (!fn[8][i]) setM(8, i, false)
+  }
+
+  // Reserve version info areas (required for version 7+, two 6x3 blocks)
+  if (ver >= 7) {
+    for (let i = 0; i < 18; i++) {
+      const a = size - 11 + (i % 3)
+      const b = Math.floor(i / 3)
+      setM(b, a, false)
+      setM(a, b, false)
+    }
   }
 
   return { matrix, fn }
@@ -349,6 +380,27 @@ function placeFormat(mat: boolean[][], fmtBits: number, size: number) {
   mat[size - 8][8] = true
 }
 
+// ── Version information (required for version 7+) ────────────────────────────
+// Distinct from format info above: encodes the version number itself via its
+// own BCH(18,6) code (generator 0x1F25), unmasked, in two 6x3 blocks near the
+// top-right and bottom-left finders. Without it, symbols v7+ are ambiguous by
+// size alone and compliant readers (including iOS Camera) refuse to decode.
+function computeVersionBits(ver: number): number {
+  let rem = ver
+  for (let i = 0; i < 12; i++) rem = (rem << 1) ^ ((rem >> 11) * 0x1f25)
+  return (ver << 12) | rem
+}
+
+function placeVersion(mat: boolean[][], verBits: number, size: number) {
+  for (let i = 0; i < 18; i++) {
+    const bit = ((verBits >> i) & 1) === 1
+    const a = size - 11 + (i % 3)
+    const b = Math.floor(i / 3)
+    mat[b][a] = bit
+    mat[a][b] = bit
+  }
+}
+
 // ── Main export ───────────────────────────────────────────────────────────────
 export interface QRResult {
   matrix: boolean[][]
@@ -356,14 +408,14 @@ export interface QRResult {
   size: number
 }
 
-export function generateQR(url: string): QRResult {
+export function generateQR(url: string, level: ECLevel = 'M'): QRResult {
   const urlBytes = new TextEncoder().encode(url)
-  const ver = chooseVersion(urlBytes.length)
+  const ver = chooseVersion(urlBytes.length, level)
   const size = ver * 4 + 17
 
   // Encode data
-  const dataCw = encodeData(url, ver)
-  const allCw = interleave(dataCw, ver)
+  const dataCw = encodeData(url, ver, level)
+  const allCw = interleave(dataCw, ver, level)
 
   // Build bit stream
   const finalBits: number[] = []
@@ -385,30 +437,82 @@ export function generateQR(url: string): QRResult {
   }
 
   // Place format info
-  const fmtBits = computeFormatBits(0, bestMask) // EC level M = formatBits 0
+  const fmtBits = computeFormatBits(FORMAT_BITS[level], bestMask)
   placeFormat(bestMat!, fmtBits, size)
+
+  // Place version info (version 7+ only)
+  if (ver >= 7) {
+    const verBits = computeVersionBits(ver)
+    placeVersion(bestMat!, verBits, size)
+  }
 
   return { matrix: bestMat!, version: ver, size }
 }
 
+// ── Logo overlay ──────────────────────────────────────────────────────────────
+// Two independent constraints bound how large a centered square logo can be:
+//
+// 1. Geometry: the box must not reach into any of the three 8×8 finder-pattern
+//    corners (finder + separator + adjacent format-info strip). For a logo
+//    box of `m` modules centered in a `size`×`size` symbol, this requires
+//    m <= size - 16.
+// 2. Error-correction budget: Level H recovers ~30% corrupted codewords: we
+//    cap the cleared *area* at 20% (half the theoretical ceiling) so the
+//    quiet zone, alignment patterns, and mask noise all have headroom.
+//
+// The binding constraint differs by version — small symbols (v1-3, i.e. short
+// URLs) are geometry-bound; larger ones are EC-bound. Always take the tighter
+// of the two so neither guarantee is violated.
+const MAX_LOGO_AREA_RATIO = 0.20
+const FINDER_CLEARANCE = 8 // rows/cols occupied by a finder pattern + separator
+
+export function maxLogoRatio(version: number): number {
+  const size = version * 4 + 17
+  const geometryLimit = Math.max(0, (size - 2 * FINDER_CLEARANCE) / size)
+  const ecLimit = Math.sqrt(MAX_LOGO_AREA_RATIO)
+  return Math.min(geometryLimit, ecLimit)
+}
+
+export interface LogoOptions {
+  /** data: URI or external URL for the logo image */
+  src: string
+  /** fraction (0–maxLogoRatio()) of the QR's module grid the logo's square backing spans */
+  ratio: number
+}
+
 // ── SVG export ────────────────────────────────────────────────────────────────
-export function qrToSVG(qr: QRResult, moduleSize = 10, quiet = 4): string {
+export function qrToSVG(qr: QRResult, moduleSize = 10, quiet = 4, logo?: LogoOptions): string {
   const { matrix, size } = qr
   const total = (size + quiet * 2) * moduleSize
+
+  const clampedRatio = logo ? Math.min(logo.ratio, maxLogoRatio(qr.version)) : 0
+  const logoModules = clampedRatio * size
+  const logoStart = (size - logoModules) / 2
+  const logoEnd = logoStart + logoModules
 
   const rects: string[] = []
   for (let r = 0; r < size; r++) {
     for (let c = 0; c < size; c++) {
-      if (matrix[r][c]) {
-        const x = (c + quiet) * moduleSize
-        const y = (r + quiet) * moduleSize
-        rects.push(`M${x},${y}h${moduleSize}v${moduleSize}h-${moduleSize}z`)
-      }
+      if (!matrix[r][c]) continue
+      if (logo && r >= logoStart - 0.5 && r <= logoEnd - 0.5 && c >= logoStart - 0.5 && c <= logoEnd - 0.5) continue
+      const x = (c + quiet) * moduleSize
+      const y = (r + quiet) * moduleSize
+      rects.push(`M${x},${y}h${moduleSize}v${moduleSize}h-${moduleSize}z`)
     }
+  }
+
+  let logoMarkup = ''
+  if (logo) {
+    const boxPx = logoModules * moduleSize
+    const originPx = (logoStart + quiet) * moduleSize
+    const pad = boxPx * 0.08
+    logoMarkup = `
+<rect x="${originPx}" y="${originPx}" width="${boxPx}" height="${boxPx}" rx="${boxPx * 0.16}" fill="white"/>
+<image href="${logo.src}" x="${originPx + pad}" y="${originPx + pad}" width="${boxPx - pad * 2}" height="${boxPx - pad * 2}" preserveAspectRatio="xMidYMid slice" clip-path="inset(0 round ${(boxPx - pad * 2) * 0.12}px)"/>`
   }
 
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${total} ${total}" width="${total}" height="${total}" shape-rendering="crispEdges">
 <rect width="${total}" height="${total}" fill="white"/>
-<path fill="black" d="${rects.join('')}"/>
+<path fill="black" d="${rects.join('')}"/>${logoMarkup}
 </svg>`
 }

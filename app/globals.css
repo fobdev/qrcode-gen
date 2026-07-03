@@ -55,6 +55,12 @@ body {
   font-family: "DM Mono", monospace;
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
+}
+
+/* Only html should be a scroll container - setting overflow-x/overscroll-behavior
+   on body too makes body a second, non-scrolling container that swallows wheel
+   events instead of letting them chain up to html. */
+html {
   overflow-x: hidden;
   overscroll-behavior: none;
 }

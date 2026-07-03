@@ -4,6 +4,8 @@ import React, { useRef } from 'react'
 import { Input } from '../atoms/Input'
 import { CopyIcon, CheckIcon } from '../atoms/Icon'
 
+const DEFAULT_SCHEME = 'https://'
+
 interface InputBarProps {
     url: string
     setUrl: (url: string) => void
@@ -14,6 +16,26 @@ interface InputBarProps {
 
 export function InputBar({ url, setUrl, onCopy, onClear, copied }: InputBarProps) {
     const inputRef = useRef<HTMLInputElement>(null)
+
+    // While the field is untouched (url is exactly the auto-filled scheme),
+    // the real input stays visually empty so the browser's native placeholder
+    // renders https://example.com in muted gray — matching how every other
+    // "hint" in this app is styled. The moment the user types, we splice their
+    // keystroke onto the hidden scheme, and from then on the input shows and
+    // edits its real value like a normal field (their typing always renders
+    // at full, normal opacity, same as any text they type anywhere else).
+    const isPristine = url === DEFAULT_SCHEME
+    const displayValue = isPristine ? '' : url
+
+    function handleChange(typed: string) {
+        setUrl(isPristine ? DEFAULT_SCHEME + typed : typed)
+    }
+
+    function handlePaste(pasted: string) {
+        // A pasted value that already carries its own scheme replaces the field
+        // outright — no duplicating/prepending the default on top of it.
+        setUrl(pasted)
+    }
 
     return (
         <div
@@ -44,18 +66,18 @@ export function InputBar({ url, setUrl, onCopy, onClear, copied }: InputBarProps
             <Input
                 ref={inputRef}
                 type="url"
-                value={url}
-                onChange={e => setUrl(e.target.value)}
+                value={displayValue}
+                onChange={e => handleChange(e.target.value)}
                 onPaste={e => {
                     const pasted = e.clipboardData.getData('text')
-                    setUrl(pasted)
+                    handlePaste(pasted)
                     e.preventDefault()
                 }}
                 placeholder="https://example.com"
                 spellCheck={false}
             />
 
-            {url && (
+            {!isPristine && (
                 <button
                     onClick={onCopy}
                     style={{
@@ -76,7 +98,7 @@ export function InputBar({ url, setUrl, onCopy, onClear, copied }: InputBarProps
                 </button>
             )}
 
-            {url && (
+            {!isPristine && (
                 <button
                     onClick={onClear}
                     style={{
